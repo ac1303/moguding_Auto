@@ -1,12 +1,14 @@
-import json
-import requests
 import hashlib
 import urllib3
+import getProxy
+import json
+import requests
 urllib3.disable_warnings()
-# requests.packages.urllib3.disable_warnings()
 # =================用户配置=======================
-phone="1833***4721"          #账号
-password="Fanshuhua***"      #密码
+phone="18336684721"          #账号
+password="Fanshuhua111"      #密码
+# phone="17307288868"          #账号
+# password="1qaz2WSX"      #密码
 country="中国"                   #国家
 province="湖北省"             #省
 city="武汉"                  #城市
@@ -16,7 +18,7 @@ longitude="114.467541"                 #经度
 types="START"                     #类型，START和END，START上班，END下班
 #===================推送key=============================
 # serveSendKey=""
-serveSendKey=""
+serveSendKey="SCT81708Tgz4lewIrwFEqcDaXN8MvpUYP"
 # =================脚本配置(不可擅自更改)=======================
 Login_Url='https://api.moguding.net:9000/session/user/v1/login'
 planUrl = "https://api.moguding.net:9000/practice/plan/v3/getPlanByStu"
@@ -56,52 +58,48 @@ def GenerateSign(x):
     a = hashlib.md5(a).hexdigest() 
     # print(a)
     return a
-# ================登录====================
-def login():
-    print("开始登录...")
-    global token,userId
-    data = {
-            "password": password,
-            "loginType": "android",
-            "uuid": "",
-            "phone": phone
-        }
-    req = requests.post(Login_Url,data=json.dumps(data),headers=headers,verify=False)
-    print(req.text)
-    token=json.loads(req.text)['data']['token']
-    userId=json.loads(req.text)['data']['userId']
+data = {
+"password": 'Fanshuhua111',
+"loginType": "android",
+"uuid": "",
+"phone": '18336684721'
+}
+session = requests.Session()
+while True:
+    proxies=getProxy.getproxy()
+    print("使用代理{}".format(proxies['http']))
+    session.proxies=proxies
+    try:
+        req = session.post('https://api.moguding.net:9000/session/user/v1/login',data=json.dumps(data),headers=headers,verify=False,timeout=2)
+        # print(req.text)
+        token=json.loads(req.text)['data']['token']
+        userId=json.loads(req.text)['data']['userId']
+        break
+    except:
+        print("代理异常")
+        session = requests.Session()
+        continue
 # ===================获取planID=======================
-def getPlanId():
-    login()
-    print("获取打卡planID....")
-    global planId
-    data = {"state": ""}
-    headers["Authorization"]=token 
-    # sign= userId+"student"+salt
-    headers["sign"]=GenerateSign(userId+"student"+salt)
-    req = requests.post(planUrl,data=json.dumps(data),headers=headers)
-    req.headers.keys
-    planId=json.loads(req.text)['data'][0]['planId']
-    print("planId",planId)
+data = {"state": ""}
+headers["Authorization"]=token 
+# sign= userId+"student"+salt
+headers["sign"]=GenerateSign(userId+"student"+salt)
+req = session.post(planUrl,data=json.dumps(data),headers=headers)
+req.headers.keys
+planId=json.loads(req.text)['data'][0]['planId']
+print("planId",planId)
 # =======================开始打卡=======================
-def main():
-    getPlanId()
-    print("开始打卡....")
-     # sign= device + type + planID + userId + Address + salt    
-    body["planId"]=planId
-    headers["sign"]=GenerateSign(body["device"]+body["type"]+planId+userId+body["address"]+salt)
-    req = requests.post(saveUrl,data=json.dumps(body),headers=headers)
-    req_json=json.loads(req.text)
+body["planId"]=planId
+headers["sign"]=GenerateSign(body["device"]+body["type"]+planId+userId+body["address"]+salt)
+req = session.post(saveUrl,data=json.dumps(body),headers=headers)
+req_json=json.loads(req.text)
+print("sign",req_json)
 
-    if(req_json["code"]==200):
-        print("打卡成功")
-        sendMsg("蘑菇丁打卡状态通知","打卡状态："+req_json["msg"]+"\n\n打卡时间："+req_json["data"]["createTime"])
-    else:
-        print("打卡失败")
-        sendMsg("蘑菇丁打卡状态通知","打卡失败"+"\n\n失败原因："+req_json["msg"])
-    # print(req.text)
-    # print(req.cookies)
-    # print(req.headers)
-
-
-main()
+if(req_json["code"]==200):
+    print("打卡成功")
+    love=requests.get("https://api.mcloc.cn/love/")
+    print(love.text)
+    sendMsg("蘑菇丁打卡状态通知","打卡状态："+req_json["msg"]+"\n\n打卡时间："+req_json["data"]["createTime"]+"\n\n今日份土味情话"+love.text)
+else:
+    print("打卡失败")
+    sendMsg("蘑菇丁打卡状态通知","打卡失败"+"\n\n失败原因："+req_json["msg"])
